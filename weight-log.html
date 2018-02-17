@@ -12,13 +12,19 @@
   <div class="container">
     <div class="row">
       <div id="week-bar" class="col-sm-12 col-md-8">
-        <button id="select-1day">1 day</button>
+        <!--<button id="select-1day">1 day</button>-->
         <button id="select-5day">5 days</button>
         <button id="select-1month">1 month</button>
         <button id="select-3month">3 months</button>
         <button id="select-1year">1 year</button>
       </div>
       <div class="col-sm-12 col-md-4">
+        <select id="select-person">
+          <option value="bob">Bob</option>
+          <option value="kate">Kate</option>
+          <option value="fred">Fred</option>
+          <option value="susan">Susan</option>
+        </select>
         <button id="select-steps">Steps</button>
         <button id="select-water">Water</button>
         <button id="select-meal">Meal</button>
@@ -41,7 +47,7 @@ pat_id = 2756
 $("#week-bar").height(500)
 
 // set the dimensions and margins of the graph
-let margin = {top: 10, right: 30, bottom: 50, left: 40},
+let margin = {top: 10, right: 30, bottom: 50, left: 60},
     width = $("#week-bar").width() - margin.left - margin.right,
     height = $("#week-bar").height() - margin.top - margin.bottom;
     lineHeight = 0.75 * height
@@ -101,19 +107,19 @@ barYAxis.append("text")
 
 svg.append("text")
         .attr("transform", "rotate(-90)")
-        .attr("y", 0 - margin.left)
+        .attr("y", -margin.left)
         .attr("x", -20 - (lineHeight / 2))
         .attr("dy", "1em")
         .style("text-anchor", "middle")
         .text("weight");
 
-//svg.append("text")
-//        .attr("transform", "rotate(-90)")
-//        .attr("y", - margin.left)
-//        .attr("x", -12 - (lineHeight / 2))
-//        .attr("dy", "1em")
-//        .style("text-anchor", "middle")
-//        .text("delta weight");
+let label2 = svg.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", - margin.left)
+        .attr("x", - (lineHeight + barHeight/2))
+        .attr("dy", "1em")
+        .style("text-anchor", "middle")
+        .text("delta weight");
 
 
 let line = d3.line()
@@ -124,6 +130,7 @@ let line = d3.line()
 let bars = svg.selectAll(".bar");
 
 let rolling = svg.append("path")
+    .attr("class", "line")
     .attr("fill", "none")
     .attr("stroke", "steelblue")
     .attr("stroke-linecap", "round")
@@ -147,17 +154,12 @@ $(document).ready(function() {
   $("#select-1year").click(function() { filter_time("year", 365); });
 
   $("#select-steps").click(function() { compare_features("steps"); });
-  $("#select-water").click(function() { compare_features("water"); });
-  $("#select-meal").click(function() { compare_features("meal"); });
+  $("#select-water").click(function() { compare_features("ounces"); });
+  $("#select-meal").click(function() { compare_features("calories"); });
 
-  let data_table = {
-    "observations": {"points": []},
-    "day": {"line": [], "bars": []}, 
-    "5day": {"line": [], "bars": []}, 
-    "month": {"line": [], "bars": []}, 
-    "3month": {"line": [], "bars": []}, 
-    "year": {"line": [], "bars": []}, 
-  };
+  $("#select-person").on("change", function() { update_person(this.value) });
+
+  let data_table = [];
 
   let step_data = {
     "day": [],
@@ -167,40 +169,59 @@ $(document).ready(function() {
     "year": [],
   };
 
-  d3.csv("data1.csv", function(error, data) {
-    if (error) throw error;
+  let curr_person = "bob";
+  let curr_days = 30
+  update_person(curr_person);
 
-    let curr_range = "observations";
-    let curr_type = "points"
+  function update_person(person) {
+    curr_person = person;
+    data_table = {
+      "observations": {"points": []},
+      "day": {"line": [], "bars": []}, 
+      "5day": {"line": [], "bars": []}, 
+      "month": {"line": [], "bars": []}, 
+      "3month": {"line": [], "bars": []}, 
+      "year": {"line": [], "bars": []}, 
+    };
 
-    console.log(data)
+    console.log(curr_person);
 
-    data.forEach(function(d) {
-      if (d.weight == "new") {
-        curr_range = d.time;
-        curr_type = "line";
-        // intervals longer than a single day will drop time portion of date
-        if (d.time == "month") {
-          parseTime = d3.timeParse("%Y-%m-%d");
+    d3.csv(person + ".csv", function(error, data) {
+      if (error) throw error;
+  
+      let curr_range = "observations";
+      let curr_type = "points"
+  
+      console.log(data)
+  
+      data.forEach(function(d) {
+        if (d.weight == "new") {
+          curr_range = d.time;
+          curr_type = "line";
+          // intervals longer than a single day will drop time portion of date
+          if (d.time == "month") {
+            //parseTime = d3.timeParse("%Y-%m-%d");
+          }
         }
-      }
-      else if (d.time == "bars") {
-        curr_type = "bars";
-
-      } else {
-        data_table[curr_range][curr_type].push({
-          "time": parseTime(d.time), 
-          "weight": +d.weight,
-          "std": +d.std
-        });
-      }
+        else if (d.time == "bars") {
+          curr_type = "bars";
+  
+        } else {
+          data_table[curr_range][curr_type].push({
+            "time": parseTime(d.time), 
+            "weight": +d.weight,
+            "std": +d.std
+          });
+        }
+      });
+  
+      filter_time("month", 30);
     });
-    //console.log(data_table);
-
-    filter_time("month", 30);
-  });
+  }
 
   function filter_time(interval, days) {
+
+    curr_days = days
 
     function filter_range(d) {
       // TODO support negative heights
@@ -210,10 +231,8 @@ $(document).ready(function() {
     let filtered_weights = data_table["observations"]["points"].filter(filter_range);
 
     let filtered_rolling = data_table[interval]["line"].filter(filter_range);
-    console.log(filtered_rolling)
 
     let filtered_bars = data_table[interval]["bars"].filter(filter_range);
-    console.log(filtered_bars);
 
     let today = new Date();
     let start = new Date().setDate(today.getDate()-days);
@@ -234,24 +253,27 @@ $(document).ready(function() {
 
     barYAxis.call(d3.axisLeft(barY))
 
-    let points = svg.selectAll(".dot")
+    svg.selectAll(".dot").remove()
+
+    svg.selectAll(".dot")
         .data(filtered_weights)
-
-    points.exit().remove()
-
-    points.enter().append("circle")
+        .enter().append("circle")
         .attr("class", "dot")
         .attr("r", 3.5)
-        .merge(points)
         .attr("cx", (d) => { return x(d.time); })
         .attr("cy", (d) => { return lineY(d.weight); })
         .style("fill", "steelblue")
 
-    rolling.datum(filtered_rolling).attr("d", line)
-      .attr("fill", "none")
-      .attr("stroke", "steelblue")
-      .attr("stroke-linecap", "round")
-      .attr("stroke-width", 1.5);
+    svg.selectAll(".line").remove()
+    svg.selectAll(".band").remove()
+
+    let rolling = svg.append("path")
+        .datum(filtered_rolling).attr("d", line)
+        .attr("class", "line")
+        .attr("fill", "none")
+        .attr("stroke", "steelblue")
+        .attr("stroke-linecap", "round")
+        .attr("stroke-width", 1.5);
 
 
     svg.selectAll(".bar").remove()
@@ -286,7 +308,9 @@ $(document).ready(function() {
       })
     }
 
-    stdDev.datum(std_data).attr("d", line)
+    let stdDev = svg.append("path")
+      .datum(std_data).attr("d", line)
+      .attr("class", "band")
       .attr("fill", "steelblue")
       .attr("opacity", 0.6)
 
@@ -294,27 +318,43 @@ $(document).ready(function() {
 
   function compare_features(feature) {
 
+    console.log(curr_person)
     secondary_data = []
 
-    d3.csv("/user-" + feature + "/" + pat_id, function(error, data) {
+    d3.csv(curr_person + "-" + feature + ".csv", function(error, data) {
       if (error) throw error;
 
-      console.log(data);
-      
+      console.log(data)
+
       data.forEach(function(d) {
         d.time = parseTime(d.time);
         d.steps = +d.steps;
       });
 
-      svg.select(".bar").remove()
+      svg.selectAll(".bar").remove()
 
-      bars.data(data)
+      let today = new Date();
+      let start = new Date().setDate(today.getDate()-curr_days);
+
+      barX.domain([start, today]);
+      barY.domain([0, d3.max(data, (d) => { return d.steps; })]);
+      barYAxis.call(d3.axisLeft(barY))
+      label2.text(feature);
+
+      function filter_range(d) {
+        // TODO support negative heights
+        return Date.now() - d.time < 1000 * 60 * 60 * 24 * curr_days && d.steps != 0;
+      }
+      filtered_data = data.filter(filter_range)
+
+      bars.data(filtered_data)
           .enter().append("rect")
+          .merge(bars)
           .attr("class", "bar")
           .attr("x", (d) => { return barX(d.time); })
           .attr("y", (d) => { return lineHeight + barY(Math.max(d.steps, 0)); })
           .attr("height", (d) => { return Math.abs(barY(d.steps) - barY(0)); })
-          .attr("width", 12);
+          .attr("width", 5);
     })
   }
 });
