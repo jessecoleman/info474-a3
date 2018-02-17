@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>User Dashboard</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+  <!--<link rel="stylesheet" href="weight-log.css">-->
+</head>
+<body>
+  
+  <div class="container">
+    <h1>Weight Tracker</h1>
+    <div class="row">
+      <div id="week-bar" class="col-sm-12 col-md-12">
+        <!--<button id="select-1day">1 day</button>-->
+        <button id="select-5day">5 days</button>
+        <button id="select-1month">1 month</button>
+        <button id="select-3month">3 months</button>
+        <button id="select-1year">1 year</button>
+      </div>
+      <div class="col-sm-12 col-md-12">
+      </br>
+      </br>
+        <select id="select-person">
+          <option value="bob">Bob</option>
+          <option value="kate">Kate</option>
+          <option value="fred">Fred</option>
+          <option value="susan">Susan</option>
+        </select>
+        <button id="select-steps">Steps</button>
+        <button id="select-water">Water</button>
+        <button id="select-meal">Meal</button>
+      </div>
+    </div>
+  </div>
+  <style>
+.d3-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border-radius: 2px;
+}
+
+/* Creates a small triangle extender for the tooltip */
+.d3-tip:after {
+  box-sizing: border-box;
+  display: inline;
+  font-size: 10px;
+  width: 100%;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.8);
+  content: "\25BC";
+  position: absolute;
+  text-align: center;
+}
+
+/* Style northward tooltips differently */
+.d3-tip.n:after {
+  margin: -1px 0 0 0;
+  top: 100%;
+  left: 0;
+}
+  </style>
+
+  <script
+    src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+    integrity="sha256-3edrmyuQ0w65f8gfBsqowzjJe2iM6n0nKciPUp8y+7E="
+    crossorigin="anonymous"></script>
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+  <script src="//d3js.org/d3.v4.min.js"></script>
+  <script src="d3-tip.js"></script>
+  <script>
+
+pat_id = 2756
+
+$("#week-bar").height(500)
+
+// set the dimensions and margins of the graph
+let margin = {top: 10, right: 30, bottom: 50, left: 60},
+    width = $("#week-bar").width() - margin.left - margin.right,
+    height = $("#week-bar").height() - margin.top - margin.bottom;
+    lineHeight = 0.75 * height
+    barHeight = 0.25 * height
+
+// parse the date / time
+let parseDate = d3.timeParse("%d-%m-%Y");
+
+// append the svg object to the body of the page
+// append a 'group' element to 'svg'
+// moves the 'group' element to the top left margin
+let svg = d3.select("#week-bar").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    //.attr("preserveAspectRatio", "xMinYMin meet")
+    //.attr("viewBox", "0 0 960 500")
+    .append("g")
+    .attr("transform", 
+          "translate(" + margin.left + "," + margin.top + ")");
+
+// set the ranges
+let x = d3.scaleTime()
+        .rangeRound([0, width]);
+
+let lineY = d3.scaleLinear()
+        .rangeRound([lineHeight, 0]);
+
+let barX = d3.scaleTime()
+        .range([0, width]);
+
+let barY = d3.scaleLinear()
+        .range([barHeight, 0])
+
+let xAxis = svg.append("g")
+        .attr("transform", "translate(0," + height + ")");
+
+let yAxis = svg.append("g")
+
+yAxis.append("text")
+        .attr("fill", "#000")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", "0.71em")
+        .attr("text-anchor", "end")
+        .attr("Weight (lbs)");
+
+let barYAxis = svg.append("g")
+        .attr("transform", "translate(0," + lineHeight + ")");
+
+barYAxis.append("text")
+        .attr("fill", "#000")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", "0.71em")
+        .attr("text-anchor", "end")
+        .attr("Weight (lbs)");
+
+svg.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", -margin.left)
+        .attr("x", -20 - (lineHeight / 2))
+        .attr("dy", "1em")
+        .style("text-anchor", "middle")
+        .text("weight");
+
+let label2 = svg.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", - margin.left)
+        .attr("x", - (lineHeight + barHeight/2))
+        .attr("dy", "1em")
+        .style("text-anchor", "middle")
+        .text("delta weight");
+
+
+let line = d3.line()
+    .curve(d3.curveBasis)
+    .x((d) => { return x(d.time); })
+    .y((d) => { return lineY(d.weight); });
+
+let bars = svg.selectAll(".bar");
+
+let rolling = svg.append("path")
+    .attr("class", "line")
+    .attr("fill", "none")
+    .attr("stroke", "steelblue")
+    .attr("stroke-linecap", "round")
+    .attr("stroke-width", 1.5);
+
+let stdDev = svg.append("path")
+    .attr("fill", "steelblue")
+    .attr("opacity", 0.6)
+    //.attr("stroke-linecap", "round")
+    //.attr("stroke-width", 1.5);
+
+let tip = d3.tip()
+  .attr('class', 'd3-tip')
+  .offset([-10, 0])
+  .html(function(d) {
+    let value;
+    if (d.weight) value = d.weight;
+    else if (d.steps) value = d.steps;
+    return "<strong>Value:</strong> <span>" + value + "</span>";
+  })
+
+svg.call(tip);
+
+let parseTime = d3.timeParse("%Y-%m-%d %H:%M:%S");
+
+$(document).ready(function() {
+
+  $("#select-1day").click(function() { filter_time("day", 1); });
+  $("#select-5day").click(function() { filter_time("5day", 5); });
+  $("#select-1month").click(function() { filter_time("month", 30); });
+  $("#select-3month").click(function() { filter_time("3month", 90); });
+  $("#select-1year").click(function() { filter_time("year", 365); });
+
+  $("#select-steps").click(function() { compare_features("steps"); });
+  $("#select-water").click(function() { compare_features("ounces"); });
+  $("#select-meal").click(function() { compare_features("calories"); });
+
+  $("#select-person").on("change", function() { update_person(this.value) });
+
+  let data_table = [];
+
+  let step_data = {
+    "day": [],
+    "5day": [],
+    "month": [],
+    "3month": [],
+    "year": [],
+  };
+
+  let curr_person = "bob";
+  let curr_days = 30
+  update_person(curr_person);
+
+  function update_person(person) {
+    curr_person = person;
+    data_table = {
+      "observations": {"points": []},
+      "day": {"line": [], "bars": []}, 
+      "5day": {"line": [], "bars": []}, 
+      "month": {"line": [], "bars": []}, 
+      "3month": {"line": [], "bars": []}, 
+      "year": {"line": [], "bars": []}, 
+    };
+
+    label2.text("delta weight");
+
+    d3.csv(person + ".csv", function(error, data) {
+      if (error) throw error;
+  
+      let curr_range = "observations";
+      let curr_type = "points"
+  
+      console.log(data)
+  
+      data.forEach(function(d) {
+        if (d.weight == "new") {
+          curr_range = d.time;
+          curr_type = "line";
+          // intervals longer than a single day will drop time portion of date
+          if (d.time == "month") {
+            //parseTime = d3.timeParse("%Y-%m-%d");
+          }
+        }
+        else if (d.time == "bars") {
+          curr_type = "bars";
+  
+        } else {
+          data_table[curr_range][curr_type].push({
+            "time": parseTime(d.time), 
+            "weight": +d.weight,
+            "std": +d.std
+          });
+        }
+      });
+  
+      filter_time("month", 30);
+    });
+  }
+
+  function filter_time(interval, days) {
+
+    curr_days = days
+
+    function filter_range(d) {
+      // TODO support negative heights
+      return Date.now() - d.time < 1000 * 60 * 60 * 24 * days && d.weight != 0;
+    }
+
+    let filtered_weights = data_table["observations"]["points"].filter(filter_range);
+
+    let filtered_rolling = data_table[interval]["line"].filter(filter_range);
+
+    let filtered_bars = data_table[interval]["bars"].filter(filter_range);
+
+    let today = new Date();
+    let start = new Date().setDate(today.getDate()-days);
+
+    x.domain([start, today]);
+    lineY.domain(d3.extent(filtered_weights, (d) => { return d.weight; }));
+
+    //barX.domain(d3.extent(filtered_bars, (d) => { return d.time; }));
+    barX.domain([start, today]);
+    barY.domain(d3.extent(filtered_bars, (d) => { return d.weight; }));
+
+    xAxis.call(d3.axisBottom(x))
+      .selectAll("text")
+        .attr("transform", "rotate(-45)")
+        .style("text-anchor", "end");
+
+    yAxis.call(d3.axisLeft(lineY))
+
+    barYAxis.call(d3.axisLeft(barY))
+
+    svg.selectAll(".line").remove()
+    svg.selectAll(".band").remove()
+
+    let rolling = svg.append("path")
+        .datum(filtered_rolling).attr("d", line)
+        .attr("class", "line")
+        .attr("fill", "none")
+        .attr("stroke", "steelblue")
+        .attr("stroke-linecap", "round")
+        .attr("stroke-width", 1.5);
+
+
+    svg.selectAll(".bar").remove()
+    
+    bars.data(filtered_bars)
+        .enter().append("rect")
+        .attr("class", "bar")
+        .attr("x", (d) => { return barX(d.time); })
+        .attr("y", (d) => { return lineHeight + barY(Math.max(d.weight, 0)); })
+        .attr("height", (d) => { return Math.abs(barY(d.weight) - barY(0)); })
+        .attr("width", 12)
+        .on("mouseover", tip.show)
+        .on("mouseout", tip.hide);
+
+    let std_data = []
+    for(var i = 0; i < filtered_rolling.length; i++) {
+      std_data.push({
+        "time": filtered_rolling[i]["time"],
+        "weight": filtered_rolling[i]["weight"] - filtered_rolling[i]["std"]
+      })
+    }
+    std_data.push({
+      "time": filtered_rolling[filtered_rolling.length - 1]["time"],
+      "weight": filtered_rolling[filtered_rolling.length - 1]["weight"] - filtered_rolling[filtered_rolling.length - 1]["std"]
+    })
+     std_data.push({
+      "time": filtered_rolling[filtered_rolling.length - 1]["time"],
+      "weight": filtered_rolling[filtered_rolling.length - 1]["weight"] + filtered_rolling[filtered_rolling.length - 1]["std"]
+    })
+    for (var i = filtered_rolling.length - 1; i >= 0; i--) {
+      std_data.push({
+        "time": filtered_rolling[i]["time"],
+        "weight": filtered_rolling[i]["weight"] + filtered_rolling[i]["std"]
+      })
+    }
+
+    let stdDev = svg.append("path")
+      .datum(std_data).attr("d", line)
+      .attr("class", "band")
+      .attr("fill", "steelblue")
+      .attr("opacity", 0.6)
+
+    svg.selectAll(".dot").remove()
+
+    svg.selectAll(".dot")
+        .data(filtered_weights)
+        .enter().append("circle")
+        .attr("class", "dot")
+        .attr("r", 3.5)
+        .attr("cx", (d) => { return x(d.time); })
+        .attr("cy", (d) => { return lineY(d.weight); })
+        .style("fill", "steelblue")
+        .on("mouseover", tip.show)
+        .on("mouseout", tip.hide);
+
+
+  }
+
+  function compare_features(feature) {
+
+    console.log(curr_person)
+    secondary_data = []
+
+    d3.csv(curr_person + "-" + feature + ".csv", function(error, data) {
+      if (error) throw error;
+
+      console.log(data)
+
+      data.forEach(function(d) {
+        d.time = parseTime(d.time);
+        d.steps = +d.steps;
+      });
+
+      svg.selectAll(".bar").remove()
+
+      let today = new Date();
+      let start = new Date().setDate(today.getDate()-curr_days);
+
+      barX.domain([start, today]);
+      barY.domain([0, d3.max(data, (d) => { return d.steps; })]);
+      barYAxis.call(d3.axisLeft(barY))
+      label2.text(feature);
+
+      function filter_range(d) {
+        // TODO support negative heights
+        return Date.now() - d.time < 1000 * 60 * 60 * 24 * curr_days && d.steps != 0;
+      }
+      filtered_data = data.filter(filter_range)
+
+      bars.data(filtered_data)
+          .enter().append("rect")
+          .merge(bars)
+          .attr("class", "bar")
+          .attr("x", (d) => { return barX(d.time); })
+          .attr("y", (d) => { return lineHeight + barY(Math.max(d.steps, 0)); })
+          .attr("height", (d) => { return Math.abs(barY(d.steps) - barY(0)); })
+          .attr("width", 5)
+          .on("mouseover", tip.show)
+          .on("mouseout", tip.hide);
+
+;
+    })
+  }
+});
+</script>
+</body>
+</html>
