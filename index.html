@@ -319,7 +319,7 @@ $(document).ready(function() {
         .attr("y", (d) => { return lineHeight + barY(Math.max(d.weight, 0)); })
         .attr("height", (d) => { return Math.abs(barY(d.weight) - barY(0)); })
         .attr("width", 12)
-        .attr("fill", (d) => { return d.weight < 0 ? "#F44336" : "#4CAF50"; })
+        .attr("fill", (d) => { return d.weight > 0 ? "#F44336" : "#4CAF50"; })
         .on("mouseover", tip.show)
         .on("mouseout", tip.hide);
 
